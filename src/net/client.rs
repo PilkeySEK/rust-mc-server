@@ -18,15 +18,34 @@ macro_rules! write_packet {
     };
 }
 
+#[derive(Debug, Copy, Clone)]
+pub enum ConnectionState {
+    None = 0,
+    Status = 1,
+    Login = 2,
+    Transfer = 3,
+}
+
+impl ConnectionState {
+    pub fn from(x: i32) -> Option<Self> {
+        match x {
+            1 => Some(Self::Status),
+            2 => Some(Self::Login),
+            3 => Some(Self::Transfer),
+            _ => None,
+        }
+    }
+}
+
 pub struct Client<'a> {
-    pub state: i32,
+    pub state: ConnectionState,
     pub stream: DataStream<'a>,
 }
 
 impl<'a> Client<'a> {
     pub fn new(stream: &'a mut TcpStream) -> Self {
         Self {
-            state: -1,
+            state: ConnectionState::None,
             stream: DataStream::new(stream),
         }
     }
@@ -50,7 +69,18 @@ impl<'a> Client<'a> {
             };
             match packet {
                 ClientBoundPacket::Handshake(packet) => {
-                    self.state = 1;
+                    self.state = match ConnectionState::from(packet.intent.0) {
+                        Some(state) => state,
+                        None => {
+                            if let Err(e) = write_packet!(StatusS2CPacket {
+                                status_str: String::from(format!(r#"{{"text":"Disallowed intent sent by client: {}"}}"#, packet.intent.0)),
+                            } => self)
+                            {
+                                println!("Failed to write disconnect packet: {}", e);
+                            };
+                            return;
+                        }
+                    };
                     let status_str = String::from(
                         r#"
         {

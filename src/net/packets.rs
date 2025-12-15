@@ -1,4 +1,5 @@
 use crate::net::{
+    client::ConnectionState,
     datastream::DataStream,
     packets::{
         handshake::HandshakeC2SPacket, ping::PingC2SPacket, status_request::StatusC2SPacket,
@@ -38,7 +39,7 @@ macro_rules! try_packet_read {
 #[must_use]
 pub async fn read_to_packet(
     stream: &mut DataStream<'_>,
-    state: i32,
+    state: ConnectionState,
 ) -> Result<ClientBoundPacket, PacketReadError> {
     let _length: VarInt = match stream.read().await {
         Ok(data) => data,
@@ -51,9 +52,9 @@ pub async fn read_to_packet(
 
     match packet_id.0 {
         0x0 => match state {
-            -1 => try_packet_read!(HandshakeC2SPacket, Handshake, stream),
-            1 => try_packet_read!(StatusC2SPacket, Status, stream),
-            _ => panic!("invalid state: {}", state),
+            ConnectionState::None => try_packet_read!(HandshakeC2SPacket, Handshake, stream),
+            ConnectionState::Status => try_packet_read!(StatusC2SPacket, Status, stream),
+            _ => panic!("invalid state: {:?}", state),
         },
         0x1 => try_packet_read!(PingC2SPacket, Ping, stream),
         _ => Err(PacketReadError::UnknownPacketId(packet_id)),
