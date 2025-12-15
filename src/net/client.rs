@@ -1,4 +1,4 @@
-use std::io::{self, ErrorKind};
+use std::io::ErrorKind;
 
 use tokio::net::TcpStream;
 
@@ -9,10 +9,7 @@ use crate::net::{
         status_response::StatusS2CPacket,
     },
     traits::Encode,
-    types::{
-        DecodeError, long::Long, string::PacketString, unsigned_short::UnsignedShort,
-        varint::VarInt,
-    },
+    types::DecodeError,
 };
 
 macro_rules! write_packet {

@@ -1,17 +1,8 @@
 use std::net::SocketAddr;
 
-use tokio::{
-    net::{TcpListener, TcpStream},
-    sync,
-};
+use tokio::net::{TcpListener, TcpStream};
 
-use crate::net::{
-    client::Client,
-    datastream::DataStream,
-    packets::{ClientBoundPacket, read_to_packet},
-    traits::{Decode, Encode},
-    types::{string::PacketString, unsigned_short::UnsignedShort, varint::VarInt},
-};
+use crate::net::client::Client;
 
 mod net;
 
