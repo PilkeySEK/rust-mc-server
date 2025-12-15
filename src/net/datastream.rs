@@ -21,12 +21,10 @@ pub struct DataStream<'a> {
 impl<'a> DataStream<'a> {
     pub async fn read_byte(&mut self) -> Result<u8, io::Error> {
         let buf: &mut [u8; 1] = &mut [0];
-        loop {
-            match self.stream.read_exact(buf).await {
-                Ok(_) => return Ok(buf[0]),
-                Err(e) => {
-                    return Err(e);
-                }
+        match self.stream.read_exact(buf).await {
+            Ok(_) => return Ok(buf[0]),
+            Err(e) => {
+                return Err(e);
             }
         }
     }
