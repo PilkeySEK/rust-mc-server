@@ -15,6 +15,12 @@ use crate::net::{
     },
 };
 
+macro_rules! write_packet {
+    ($packet:expr => $self:expr) => {
+        ($self).stream.write(($packet).encode()).await
+    };
+}
+
 pub struct Client<'a> {
     pub state: i32,
     pub stream: DataStream<'a>,
@@ -22,13 +28,6 @@ pub struct Client<'a> {
 
 impl<'a> Client<'a> {
     pub fn new(stream: &'a mut TcpStream) -> Self {
-        // let mut stream = DataStream::new(stream);
-        // let length: VarInt = stream.read().unwrap(); // TODO error handling
-        // let packet_id: VarInt = stream.read().unwrap(); // TODO
-        // let protocol_ver: VarInt = stream.read().unwrap(); // TODO
-        // let s: PacketString = stream.read().unwrap(); // TODO
-        // let port: UnsignedShort = stream.read().unwrap(); // TODO
-        // let intent: VarInt = stream.read().unwrap(); // TODO
         Self {
             state: -1,
             stream: DataStream::new(stream),
@@ -48,8 +47,7 @@ impl<'a> Client<'a> {
                         }
                         _ => (),
                     }
-                    println!("{:?}", e);
-                    // todo!();
+                    println!("Error reading packet: {:?}", e);
                     continue;
                 }
             };
@@ -73,71 +71,16 @@ impl<'a> Client<'a> {
         }
             "#,
                     );
-                    match self
-                        .stream
-                        .write(StatusS2CPacket { status_str }.encode())
-                        .await
-                    {
+                    match write_packet!(StatusS2CPacket { status_str } => self) {
                         Ok(_) => (),
                         Err(_) => todo!(),
                     };
                 }
                 ClientBoundPacket::Ping(packet) => {
-                    self.stream
-                        .write(
-                            PongS2CPacket {
-                                timestamp: packet.timestamp,
-                            }
-                            .encode(),
-                        )
-                        .await
-                        .unwrap(); // TODO error handling
+                    write_packet!(PongS2CPacket {timestamp: packet.timestamp} => self).unwrap(); // TODO error handling
                 }
                 ClientBoundPacket::Status(packet) => {}
             }
         }
-        /*
-        loop {
-            println!("Reading length...");
-            let length: VarInt = self.stream.read().unwrap(); // TODO error handling
-            println!("Read length!");
-            let packet_id: VarInt = self.stream.read().unwrap(); // TODO
-            println!("packet id: {}", packet_id.0);
-            if packet_id.0 == 1 {
-                let timestamp: Long = self.stream.read().unwrap(); // TODO
-                let timestamp_backup = timestamp;
-                let mut response = Vec::<u8>::new();
-                response.append(&mut timestamp.encode());
-                self.stream.write(response).unwrap(); // TODO
-                println!("Wrote pong response: {}", timestamp_backup.0);
-            } else if packet_id.0 == 0 && self.state == 1 {
-                let mut response = Vec::<u8>::new();
-                let status_str = String::from(
-                    r#"
-        {
-            "version": {
-                "name": "1.21.8",
-                "protocol": 773
-            },
-            "players": {
-                "max": 20,
-                "online": 0,
-                "sample": []
-            },
-            "description": {"text":"Hello, World!"},
-            "enforcesSecureChat": false
-        }
-            "#,
-                );
-                let mut packet_status_str = PacketString(status_str).encode();
-                response.append(&mut VarInt(0).encode());
-                response.append(&mut packet_status_str);
-                self.stream.write(response).unwrap(); // TODO
-                println!("Wrote response");
-            } else {
-                println!("State is {}. Ending processing", self.state);
-            }
-        }
-        */
     }
 }
