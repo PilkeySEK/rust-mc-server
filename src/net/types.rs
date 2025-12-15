@@ -3,6 +3,7 @@ use std::io;
 pub mod long;
 pub mod string;
 pub mod unsigned_short;
+pub mod uuid;
 pub mod varint;
 
 #[macro_export]

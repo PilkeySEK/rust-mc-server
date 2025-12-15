@@ -2,13 +2,15 @@ use crate::net::{
     client::ConnectionState,
     datastream::DataStream,
     packets::{
-        handshake::HandshakeC2SPacket, ping::PingC2SPacket, status_request::StatusC2SPacket,
+        handshake::HandshakeC2SPacket, login_start::LoginStartC2SPacket, ping::PingC2SPacket,
+        status_request::StatusC2SPacket,
     },
     traits::Decode,
     types::{DecodeError, varint::VarInt},
 };
 
 pub mod handshake;
+pub mod login_start;
 pub mod ping;
 pub mod pong;
 pub mod status_request;
@@ -24,6 +26,7 @@ pub enum ClientBoundPacket {
     Handshake(HandshakeC2SPacket),
     Ping(PingC2SPacket),
     Status(StatusC2SPacket),
+    LoginStart(LoginStartC2SPacket),
 }
 
 macro_rules! try_packet_read {
@@ -33,6 +36,10 @@ macro_rules! try_packet_read {
             Err(e) => Err(PacketReadError::DecodeError(e)),
         }
     };
+}
+
+pub trait PacketHandler {
+    async fn handle(&self, stream: &mut DataStream<'_>);
 }
 
 /// Read the next packet from the stream and try to match the packet id to a packet, then read the packet.
@@ -54,6 +61,7 @@ pub async fn read_to_packet(
         0x0 => match state {
             ConnectionState::None => try_packet_read!(HandshakeC2SPacket, Handshake, stream),
             ConnectionState::Status => try_packet_read!(StatusC2SPacket, Status, stream),
+            ConnectionState::Login => try_packet_read!(LoginStartC2SPacket, LoginStart, stream),
             _ => panic!("invalid state: {:?}", state),
         },
         0x1 => try_packet_read!(PingC2SPacket, Ping, stream),

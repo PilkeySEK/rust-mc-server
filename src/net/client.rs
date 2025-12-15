@@ -5,7 +5,7 @@ use tokio::net::TcpStream;
 use crate::net::{
     datastream::DataStream,
     packets::{
-        ClientBoundPacket, PacketReadError, pong::PongS2CPacket, read_to_packet,
+        ClientBoundPacket, PacketHandler, PacketReadError, pong::PongS2CPacket, read_to_packet,
         status_response::StatusS2CPacket,
     },
     traits::Encode,
@@ -56,11 +56,10 @@ impl<'a> Client<'a> {
                 Ok(packet) => packet,
                 Err(e) => {
                     match &e {
-                        PacketReadError::DecodeError(DecodeError::ReadError(e)) => {
-                            if e.kind() == ErrorKind::UnexpectedEof {
-                                return;
-                            }
-                        }
+                        PacketReadError::DecodeError(DecodeError::ReadError(e)) => match e.kind() {
+                            ErrorKind::UnexpectedEof | ErrorKind::ConnectionReset => return,
+                            _ => (),
+                        },
                         _ => (),
                     }
                     println!("Error reading packet: {:?}", e);
@@ -107,6 +106,7 @@ impl<'a> Client<'a> {
                     write_packet!(PongS2CPacket {timestamp: packet.timestamp} => self).unwrap(); // TODO error handling
                 }
                 ClientBoundPacket::Status(packet) => {}
+                ClientBoundPacket::LoginStart(packet) => packet.handle(&mut self.stream).await,
             }
         }
     }
